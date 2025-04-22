@@ -1,5 +1,62 @@
 import { ethers } from 'ethers';
-import { networkId, contractCall } from '@neardefi/shade-agent-js';
+import {
+    networkId,
+    contractCall,
+    parseNearAmount,
+} from '@neardefi/shade-agent-js';
+
+// CONFIG FOR ZORA COIN
+
+// Zora contract address - replace with your actual Zora contract address
+const ZORA_CONTRACT_ADDRESS = '0x777777751622c0d3258f214F9DF38E35BF45baF3';
+
+// ABI for Zora token contract
+const ZORA_CONTRACT_ABI = [
+    {
+        inputs: [{ internalType: 'address', name: '_logic', type: 'address' }],
+        stateMutability: 'nonpayable',
+        type: 'constructor',
+    },
+    {
+        inputs: [{ internalType: 'address', name: 'target', type: 'address' }],
+        name: 'AddressEmptyCode',
+        type: 'error',
+    },
+    {
+        inputs: [
+            {
+                internalType: 'address',
+                name: 'implementation',
+                type: 'address',
+            },
+        ],
+        name: 'ERC1967InvalidImplementation',
+        type: 'error',
+    },
+    { inputs: [], name: 'ERC1967NonPayable', type: 'error' },
+    { inputs: [], name: 'FailedInnerCall', type: 'error' },
+    {
+        anonymous: false,
+        inputs: [
+            {
+                indexed: true,
+                internalType: 'address',
+                name: 'implementation',
+                type: 'address',
+            },
+        ],
+        name: 'Upgraded',
+        type: 'event',
+    },
+    { stateMutability: 'payable', type: 'fallback' },
+];
+
+// Adding the deploy function to the ABI
+const DEPLOY_FUNCTION_ABI = [
+    'function deploy(address payoutRecipient, address[] memory owners, string memory uri, string memory name, string memory symbol, address platformReferrer, address currency, int24 tickLower, uint256 orderSize) external returns (address)',
+];
+
+// CONFIG FOR BASENAMES
 
 // Base Sepolia contract addresses from README
 const REGISTRAR_CONTROLLER_ADDRESS = {
@@ -56,6 +113,119 @@ export const evm = {
         networkId === 'testnet'
             ? 'https://sepolia.basescan.org'
             : 'https://basescan.org',
+
+    getGasPrice: async () => getProvider().getFeeData(),
+    getBalance: ({ address }) => getProvider().getBalance(address),
+    formatBalance: (balance) => ethers.formatEther(balance),
+
+    // custom methods for zora coin creation
+
+    deployZora: async ({ path, address, funder, name, symbol, uri }) => {
+        console.log('Processing Zora token deployment request');
+
+        try {
+            const provider = getProvider();
+
+            // Deployment parameters
+            const payoutRecipient = funder;
+            const owners = [funder];
+            const platformReferrer =
+                '0xa0CEC97b084dD2C845CEF8B4f4360E31D8d07069';
+            const currency = ethers.ZeroAddress;
+            const tickLower = -208200;
+            const orderSize = 0;
+
+            console.log(`Preparing to deploy Zora token with name: ${name}...`);
+
+            // Create contract instance with combined ABI
+            const zoraContract = new ethers.Contract(
+                ZORA_CONTRACT_ADDRESS,
+                [...ZORA_CONTRACT_ABI, ...DEPLOY_FUNCTION_ABI],
+                provider,
+            );
+
+            // Log the deployment parameters
+            console.log('Deployment Parameters:');
+            console.log(`- Payout Recipient: ${payoutRecipient}`);
+            console.log(`- Owners: ${owners.join(', ')}`);
+            console.log(`- URI: ${uri}`);
+            console.log(`- Name: ${name}`);
+            console.log(`- Symbol: ${symbol}`);
+            console.log(`- Platform Referrer: ${platformReferrer}`);
+            console.log(`- Currency: ${currency}`);
+            console.log(`- Tick Lower: ${tickLower}`);
+            console.log(`- Order Size: ${orderSize}`);
+
+            // // Estimate gas for the transaction (NOT WORKING)
+            // let gasEstimate = await zoraContract.deploy.estimateGas(
+            //     payoutRecipient,
+            //     owners,
+            //     uri,
+            //     name,
+            //     symbol,
+            //     platformReferrer,
+            //     currency,
+            //     tickLower,
+            //     orderSize,
+            // );
+            // console.log(`Gas estimate for deployment: ${gasEstimate}`);
+
+            // Create contract interface
+            const zoraInterface = new ethers.Interface([
+                ...ZORA_CONTRACT_ABI,
+                ...DEPLOY_FUNCTION_ABI,
+            ]);
+
+            // Get the network's current values
+            const [chainId, nonce, feeData] = await Promise.all([
+                provider.getNetwork().then((n) => n.chainId),
+                provider.getTransactionCount(address),
+                provider.getFeeData(),
+            ]);
+
+            // Create transaction data for deployment
+            const txData = zoraInterface.encodeFunctionData('deploy', [
+                payoutRecipient,
+                owners,
+                uri,
+                name,
+                symbol,
+                platformReferrer,
+                currency,
+                tickLower,
+                orderSize,
+            ]);
+
+            // Create transaction object for deploying the token
+            const baseTx = {
+                to: ZORA_CONTRACT_ADDRESS,
+                data: txData,
+                nonce,
+                chainId: evm.chainId, // Base Sepolia chain ID
+                type: 2, // EIP-1559 transaction
+                maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+                maxFeePerGas: feeData.maxFeePerGas,
+                gasLimit: 7000000n,
+                value: 0n,
+            };
+
+            console.log(baseTx);
+
+            console.log('Attempting Signature for Address:', address);
+            const balance = await evm.getBalance({ address });
+            console.log('Balance:', ethers.formatEther(balance), currency);
+
+            // return await completeEthereumTx({ baseTx, path });
+            return await evm.completeEthereumTxByDirectMPC({ baseTx, path });
+        } catch (error) {
+            console.error('Error in Zora token deployment:', error);
+            console.log(error?.info, error?.info?.payload?.params);
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
+    },
 
     // custom methods for basednames registration
 
@@ -244,10 +414,6 @@ export const evm = {
         }
     },
 
-    getGasPrice: async () => getProvider().getFeeData(),
-    getBalance: ({ address }) => getProvider().getBalance(address),
-    formatBalance: (balance) => ethers.formatEther(balance),
-
     send: async ({
         path,
         from: address,
@@ -318,6 +484,55 @@ export const evm = {
             },
         });
 
+        const signature = evm.parseSignature(sigRes, chainId, serializedTxHash);
+        // add signature to base transaction
+        tx.signature = signature;
+        const serializedTx = tx.serialized;
+
+        return await evm.broadcastTransaction(serializedTx);
+    },
+
+    // completes evm transaction by calling the NEAR MPC contract directly
+    completeEthereumTxByDirectMPC: async ({ baseTx, path }) => {
+        const { chainId } = evm;
+
+        console.log('networkId', networkId);
+        console.log('baseTx', baseTx);
+
+        // create hash of unsigned TX to sign -> payload
+        const tx = ethers.Transaction.from(baseTx);
+        const hexPayload = ethers.keccak256(
+            ethers.getBytes(tx.unsignedSerialized),
+        );
+        const serializedTxHash = Buffer.from(hexPayload.substring(2), 'hex');
+
+        // get the signature from the NEAR contract
+        const sigRes = await contractCall({
+            accountId: undefined,
+            contractId: 'v1.signer',
+            methodName: 'sign',
+            args: {
+                request: {
+                    payload: [...serializedTxHash],
+                    path,
+                    key_version: 0,
+                },
+            },
+            attachedDeposit: parseNearAmount('0.5'),
+        });
+        const signature = evm.parseSignature(sigRes, chainId, serializedTxHash);
+        // add signature to base transaction
+        tx.signature = signature;
+        const serializedTx = tx.serialized;
+
+        return await evm.broadcastTransaction(serializedTx);
+    },
+
+    parseSignature: (
+        sigRes,
+        chainId,
+        serializedTxHash,
+    ): ethers.SignatureLike => {
         // parse the signature r, s, v into an ethers signature instance
         const signature = ethers.Signature.from({
             r:
@@ -333,11 +548,7 @@ export const evm = {
             'ethers.recoverAddress:',
             ethers.recoverAddress(serializedTxHash, signature),
         );
-        // add signature to base transaction
-        tx.signature = signature;
-        const serializedTx = tx.serialized;
-
-        return await evm.broadcastTransaction(serializedTx);
+        return signature;
     },
 
     // broadcast transaction to evm chain, return object with explorerLink
