@@ -5,7 +5,8 @@ import { TwitterApi } from 'twitter-api-v2';
 import {
     getConversationId,
     getLatestConversationTweet,
-} from '../../utils/twitter-client';
+    replyToTweet,
+} from '../../utils/twitter-utils';
 
 const DEPOSIT_PROCESSING_DELAY = 5000;
 const REPLY_PROCESSING_DELAY = 15000;
@@ -17,9 +18,6 @@ let lastTweetTimestamp = parseInt(process.env.TWITTER_LAST_TIMESTAMP);
 let waitingForReset = 0;
 const pendingRefund = [];
 const refunded = [];
-
-let accessToken = process.env.TWITTER_ACCESS_TOKEN;
-let refreshToken = process.env.TWITTER_REFRESH_TOKEN;
 
 // both false for production
 const FAKE_REPLY = false;
@@ -54,42 +52,6 @@ const getTransactionsForAddress = async (address, action = 'txlist') => {
         console.log(e);
     }
     return tx;
-};
-
-const refreshAccessToken = async () => {
-    console.log('refreshAccessToken');
-    const client = new TwitterApi({
-        clientId: process.env.TWITTER_CLIENT_KEY,
-        clientSecret: process.env.TWITTER_CLIENT_SECRET,
-    });
-    try {
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-            await client.refreshOAuth2Token(refreshToken);
-        accessToken = newAccessToken;
-        refreshToken = newRefreshToken;
-        console.log('success refreshAccessToken', accessToken);
-    } catch (e) {
-        console.log('error refreshAccessToken');
-        console.log(e);
-    }
-};
-
-const replyToTweet = async (text, id, secondAttempt = false) => {
-    console.log('replyToTweet');
-    const client = new TwitterApi(accessToken);
-    let res;
-    try {
-        console.log('client.v2.reply', id);
-        res = FAKE_REPLY ? { data: true } : await client.v2.reply(text, id);
-    } catch (e) {
-        console.log('error', e);
-        if (!secondAttempt && /401/gi.test(JSON.stringify(e))) {
-            await refreshAccessToken();
-            res = await replyToTweet(text, id, true);
-        }
-    }
-    console.log(res);
-    return res;
 };
 
 export const getRefunded = () => refunded;
@@ -374,7 +336,7 @@ export default async function search(req, res) {
     // search
     const start_time =
         lastTweetTimestamp > 0
-            ? new Date(lastTweetTimestamp * 1000 + 1000).toISOString()
+            ? new Date(lastTweetTimestamp * 1000 + 1).toISOString()
             : undefined;
     console.log('search start_time', start_time);
     const tweetGenerator = await client.v2.search('@basednames ".base.eth"', {
