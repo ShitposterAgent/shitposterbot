@@ -14,6 +14,16 @@ export async function getClient() {
     return client;
 }
 
+// take a tweet timestamp and add 1 second so you can use this as your new start time and don't re-read tweets
+
+export function addOneSecond(ts) {
+    return ts
+        ? new Date(
+              new Date(ts).getTime() + 1000, // add 1 second
+          ).toISOString()
+        : undefined;
+}
+
 // polling for a search result (not a cron job, e.g. looking for a reply from @bankrbot for addresses)
 
 export async function pollSearch(fn, attempts = 0, limit = 10, dur = 10000) {
@@ -41,7 +51,8 @@ async function refreshAccessToken() {
             await client.refreshOAuth2Token(refreshToken);
         accessToken = newAccessToken;
         refreshToken = newRefreshToken;
-        console.log('success refreshAccessToken', accessToken);
+        console.log('newAccessToken', newAccessToken);
+        console.log('newRefreshToken', newRefreshToken);
     } catch (e) {
         console.log('error refreshAccessToken');
         console.log(e);
@@ -62,7 +73,7 @@ export async function replyToTweet(text, id, secondAttempt = false) {
             res = await replyToTweet(text, id, true);
         }
     }
-    console.log(res);
+    // console.log(res);
     return res;
 }
 
@@ -80,13 +91,19 @@ export async function getConversationId(client, tweetId) {
     return null;
 }
 
-export async function getLatestConversationTweet(client, conversationId) {
+export async function getLatestConversationTweet(
+    client,
+    conversationId,
+    start_time,
+) {
     try {
         const searchResult = await client.v2.search(
             `conversation_id:${conversationId}`,
             {
-                'tweet.fields': 'created_at',
-                max_results: 100, // Adjust based on needs
+                start_time,
+                'tweet.fields':
+                    'author_id,created_at,referenced_tweets,conversation_id',
+                max_results: 100, // might not work if thread is over 100 tweets long
             },
         );
         if (searchResult?.data?.meta?.result_count === 0) {
@@ -94,6 +111,26 @@ export async function getLatestConversationTweet(client, conversationId) {
         }
 
         return searchResult.data.data[0]; // Most recent tweet is first
+    } catch (e) {
+        console.log('ERROR getLatestConversationTweet', e);
+    }
+    return null;
+}
+
+export async function getReplyToTweet(client, tweetId) {
+    try {
+        const searchResult = await client.v2.search(
+            `in_reply_to_tweet_id:${tweetId}`,
+            {
+                'tweet.fields':
+                    'author_id,created_at,referenced_tweets,conversation_id',
+                max_results: 100,
+            },
+        );
+        if (searchResult?.data?.meta?.result_count === 0) {
+            return null;
+        }
+        return searchResult.data.data[0];
     } catch (e) {
         console.log('ERROR getLatestConversationTweet', e);
     }
