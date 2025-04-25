@@ -1,6 +1,6 @@
 import { networkId, generateAddress } from '@neardefi/shade-agent-js';
 import { evm } from '../../utils/evm';
-import { sleep } from '../../utils/utils';
+import { sleep, sleepThen } from '../../utils/utils';
 import {
     getClient,
     addOneSecond,
@@ -21,12 +21,7 @@ const pendingBankrReply = [];
 
 let lastTweetTimestamp = '2025-04-22T23:07:47.000Z';
 
-const sleepThen = async (dur, fn) => {
-    await sleep(dur);
-    fn();
-};
-
-// main endpoint for cron job
+// main endpoint for cron job is at the bottom and the flow works it's way up
 
 /*
 
@@ -37,11 +32,36 @@ TODO
 [x] - listen for replies to get @bankrbot addresses
 [x] - check author_id is bankrbot and check all replies to bankrReply until satisfied or 10min elapsed
 [x] - make sure we're only considering the FIRST minterTweet
-[] - upload media to pinata
-[] - mint zoracoin
+[x] - upload media to pinata
+[x] - mint zoracoin
 [] - reply in thread and mention UserA and UserB again
 
+TESTING
+[] - TBD
 */
+
+// deploy the zoracoin
+
+async function deployZora(data) {
+    const uri = await pinataUpload(data);
+
+    const { name, symbol, minterAddress, creatorAddress } = getMetadata(data);
+
+    const path = 'foo';
+
+    const address = process.env.FUNDING_ADDRESS;
+
+    evm.deployZora({
+        path,
+        name,
+        address,
+        symbol,
+        minter: minterAddress,
+        creator: creatorAddress,
+        address,
+        uri,
+    });
+}
 
 // this queue is for processing replies from @bankrbot after we asked it for 2 evm addresses
 
@@ -64,34 +84,29 @@ async function processBankrReply() {
         return sleepThen(PENDING_BANKR_ADDRESSES_DELAY, processBankrReply);
     }
 
-    // parse bankr reply to get addresses
-    const addresses = tweet.text.match(/0x[a-fA-F0-9]{40}/gim);
+    try {
+        // parse bankr reply to get addresses
+        const addresses = tweet.text.match(/0x[a-fA-F0-9]{40}/gim);
 
-    console.log('@bankrbot replied with addresses:', addresses);
+        console.log('@bankrbot replied with addresses:', addresses);
 
-    if (addresses.length !== 2) {
-        console.log('missing addresses');
-        return;
+        if (addresses.length !== 2) {
+            console.log('missing addresses');
+            return;
+        }
+
+        data.creatorTweet.address = addresses[0];
+        data.minterTweet.address = addresses[1];
+
+        deployZora(data);
+    } catch (e) {
+        console.log('problem getting addresses from bankrbot tweet');
     }
-
-    data.creatorTweet.address = addresses[0];
-    data.minterTweet.address = addresses[1];
-
-    // TODO deployZora
 
     // keep processing queue
     return sleepThen(PENDING_BANKR_ADDRESSES_DELAY, processBankrReply);
 }
 processBankrReply();
-
-// testing
-// pendingBankrReply.push({
-//     bankrReply: {
-//         id: '1915408527532884335',
-//     },
-//     creatorTweet: {},
-//     minterTweet: {},
-// });
 
 async function getBankrAddresses(data) {
     if (NO_REPLY) {
@@ -135,31 +150,30 @@ export default async function zoracoin(req, res) {
     let seen = 0;
     const limit = 1;
     let latestValidTimestamp;
-    // this is the candidate data for a mint
+    // in this batch of search results store candidates for a zora mint
     let candidates = [];
-    for await (const minterTweet of minterTweets) {
+    for await (let minterTweet of minterTweets) {
         if (++seen > limit) break;
 
-        console.log('minterTweet.id:', minterTweet.id);
-
-        // store the first minterTweet we look at and then update start_time in search next time
-        if (!latestValidTimestamp) {
-            latestValidTimestamp = minterTweet.created_at;
-        }
+        console.log('checking minterTweet.id:', minterTweet.id);
 
         try {
+            // store the time of the minterTweet we look at and then update start_time in search next time
+            if (!latestValidTimestamp) {
+                latestValidTimestamp = minterTweet.created_at;
+            }
+
             // did they reply to a tweet?
             const replied_to = minterTweet.referenced_tweets.filter(
                 (t) => t.type === 'replied_to',
             )?.[0]?.id;
-            // we only deal with tweets that are replies to another tweet that we want to mint
+            // we only consider reply tweets matching SEARCH_TERM
             if (typeof replied_to !== 'string') {
                 console.log('not a reply tweet');
                 continue;
             }
-            console.log('tweet.replied_to', replied_to);
 
-            // get the creator's tweet and mint data
+            // get the creatorTweet
             let creatorTweet = await client.v2.singleTweet(replied_to, {
                 expansions: 'attachments.media_keys',
                 'media.fields': 'type,url',
@@ -170,11 +184,12 @@ export default async function zoracoin(req, res) {
                 console.log('creatorTweet could not be found');
                 continue;
             }
+            // grab the media from the includes field
             const firstMedia = creatorTweet.includes?.media[0];
-            // store only the creatorTweet data after we get the first media entry
+            // overwrite the creatorTweet to include only the tweet data now so the object is the same as minterTweet
             creatorTweet = creatorTweet.data;
 
-            // have we seen creatorTweet before?
+            // seen creatorTweet before?
             const candidate = candidates.find(
                 (c) => c.creatorTweet.id === creatorTweet.id,
             );
@@ -187,21 +202,23 @@ export default async function zoracoin(req, res) {
                     const index = candidates.findIndex(
                         (c) => c.creatorTweet.id === creatorTweet.id,
                     );
-                    candidates[index] = {
-                        creatorTweet,
-                        minterTweet,
-                    };
+                    // remove the candidate from the array (added back after usernames are added below)
+                    candidates.splice(index, 1);
+                    // swap in candidate tweets
+                    minterTweet = candidate.minterTweet;
+                    creatorTweet = candidate.creatorTweet;
                 }
             } else {
-                // let's process the creatorTweet and store it
+                // process creatorTweet and store candiate zora mint
+                // default to tweet text as content
                 let mintData = creatorTweet.text;
                 if (firstMedia === undefined) {
                     console.log('no media for tweet, using tweet text');
-                    // POTENTIALLY DISCARD
+                    // DISCARD
+                    // WHY? creatorTweet is only text and includes the SEARCH TERM
                     const replied_to = creatorTweet.referenced_tweets.filter(
                         (t) => t.type === 'replied_to',
                     )?.[0]?.id;
-                    // creator tweet is another reply saying mint it with no media
                     if (
                         typeof replied_to === 'string' &&
                         /mint it/gim.test(creatorTweet.text)
@@ -210,6 +227,7 @@ export default async function zoracoin(req, res) {
                         continue;
                     }
                 } else {
+                    // mint anything with media
                     mintData = await fetch(firstMedia.url).then((r) =>
                         r.arrayBuffer(),
                     );
@@ -221,7 +239,6 @@ export default async function zoracoin(req, res) {
                 creatorTweet.mintData = mintData;
             }
 
-            // creatorTweet is qualified
             // get handles for the creator and the minter
             const users = await client.v2.users(
                 [creatorTweet.author_id, minterTweet.author_id],
@@ -235,6 +252,7 @@ export default async function zoracoin(req, res) {
             minterTweet.username = minterUsername;
             creatorTweet.username = creatorUsername;
 
+            // push the candidate
             candidates.push({
                 creatorTweet,
                 minterTweet,
@@ -245,32 +263,13 @@ export default async function zoracoin(req, res) {
         }
     }
 
-    // start processing mint
-    candidates.forEach((c) => getBankrAddresses(c));
+    // start processing mint, stagger start bc of tweets to bankrbot
+    candidates.forEach((c, i) =>
+        setTimeout(() => getBankrAddresses(c), i * 2000),
+    );
 
     // store for next search start_time
     lastTweetTimestamp = latestValidTimestamp;
 
     res.status(200).json({ success: true });
-}
-
-async function deployZora() {
-    const path = 'foo',
-        name = 'bar' + Date.now(),
-        symbol = 'TST',
-        funder = '0x525521d79134822a342d330bd91DA67976569aF1',
-        uri =
-            'https://ipfs.io/ipfs/QmafHj1eVJgMzSVRYTXHevifoNnqit9hvapEaX41tpVcP1';
-
-    // generate deposit address
-    const { address } = await generateAddress({
-        publicKey:
-            networkId === 'testnet'
-                ? process.env.MPC_PUBLIC_KEY_TESTNET
-                : process.env.MPC_PUBLIC_KEY_MAINNET,
-        accountId: 'shadeagent.near',
-        path,
-        chain: 'evm',
-    });
-    evm.deployZora({ path, name, symbol, funder, address, uri });
 }

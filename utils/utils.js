@@ -16,3 +16,8 @@ export const fetchJson = async (url, params = {}, noWarnings = false) => {
 };
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export const sleepThen = async (dur, fn) => {
+    await sleep(dur);
+    fn();
+};

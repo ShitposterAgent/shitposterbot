@@ -2794,6 +2794,11 @@ picomatch@^4.0.2:
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.2.tgz#77c742931e8f3b8820946c76cd0c1f13730d1dab"
   integrity sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg==
 
+pinata@^2.2.1:
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/pinata/-/pinata-2.2.1.tgz#cd918501d47de84cf65996f1ce74a4281a992abe"
+  integrity sha512-GQi5pxyvIuRVF+PY4d/pc4tQQemxyyt2mfR/HznXY3ATDs1zEgc0ENrTf7uUl6DkElteuUVudeAOPZCvq6pbbw==
+
 plur@^5.1.0:
   version "5.1.0"
   resolved "https://registry.yarnpkg.com/plur/-/plur-5.1.0.tgz#bff58c9f557b9061d60d8ebf93959cf4b08594ae"

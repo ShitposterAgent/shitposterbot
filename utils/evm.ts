@@ -120,17 +120,24 @@ export const evm = {
 
     // custom methods for zora coin creation
 
-    deployZora: async ({ path, address, funder, name, symbol, uri }) => {
+    deployZora: async ({
+        path,
+        address,
+        minter,
+        creator,
+        name,
+        symbol,
+        uri,
+    }) => {
         console.log('Processing Zora token deployment request');
 
         try {
             const provider = getProvider();
 
             // Deployment parameters
-            const payoutRecipient = funder;
-            const owners = [funder];
-            const platformReferrer =
-                '0xa0CEC97b084dD2C845CEF8B4f4360E31D8d07069';
+            const payoutRecipient = creator;
+            const owners = [creator];
+            const platformReferrer = minter;
             const currency = ethers.ZeroAddress;
             const tickLower = -208200;
             const orderSize = 0;
