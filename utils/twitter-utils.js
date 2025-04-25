@@ -136,3 +136,23 @@ export async function getReplyToTweet(client, tweetId) {
     }
     return null;
 }
+
+export async function getReplyToTweetFromAuthor(client, tweetId, authorId) {
+    try {
+        const searchResult = await client.v2.search(
+            `in_reply_to_tweet_id:${tweetId} from:${authorId}`,
+            {
+                'tweet.fields':
+                    'author_id,created_at,referenced_tweets,conversation_id',
+                max_results: 100,
+            },
+        );
+        if (searchResult?.data?.meta?.result_count === 0) {
+            return null;
+        }
+        return searchResult.data.data[0];
+    } catch (e) {
+        console.log('ERROR getLatestConversationTweet', e);
+    }
+    return null;
+}

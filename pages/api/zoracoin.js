@@ -5,16 +5,18 @@ import {
     getClient,
     addOneSecond,
     replyToTweet,
-    getLatestConversationTweet,
-    getReplyToTweet,
+    getReplyToTweetFromAuthor,
 } from '../../utils/twitter-utils';
 
+const BOT_USERNAME = '@proximityagent';
+const SEARCH_TERM = '"mint it"';
+const BANKR_BOT_ID = '1864452692221022210';
 const NO_SEARCH = true;
 const NO_REPLY = true;
 const USE_START_TIME = true;
 
 // queues
-const PENDING_BANKR_ADDRESSES_DELAY = 15000;
+const PENDING_BANKR_ADDRESSES_DELAY = 5000;
 const pendingBankrReply = [];
 
 let lastTweetTimestamp = '2025-04-22T23:07:47.000Z';
@@ -33,6 +35,8 @@ TODO
 [x] - get usernames
 [x] - set up reply to User B tweet with @bankrbot what are the addresses of @UserA and @UserB
 [x] - listen for replies to get @bankrbot addresses
+[x] - check author_id is bankrbot and check all replies to bankrReply until satisfied or 10min elapsed
+[x] - make sure we're only considering the FIRST minterTweet
 [] - upload media to pinata
 [] - mint zoracoin
 [] - reply in thread and mention UserA and UserB again
@@ -47,12 +51,13 @@ async function processBankrReply() {
         return sleepThen(PENDING_BANKR_ADDRESSES_DELAY, processBankrReply);
     }
 
-    console.log(
-        'getLatestConversationTweet for conversation_id:',
-        data.creatorTweet.conversation_id,
-    );
+    console.log('getReplyToTweetFromAuthor:', data.bankrReply.id, BANKR_BOT_ID);
 
-    const tweet = await getReplyToTweet(await getClient(), data.bankrReply.id);
+    const tweet = await getReplyToTweetFromAuthor(
+        await getClient(),
+        data.bankrReply.id,
+        BANKR_BOT_ID,
+    );
 
     if (!tweet) {
         pendingBankrReply.push(data);
@@ -61,6 +66,8 @@ async function processBankrReply() {
 
     // parse bankr reply to get addresses
     const addresses = tweet.text.match(/0x[a-fA-F0-9]{40}/gim);
+
+    console.log('@bankrbot replied with addresses:', addresses);
 
     if (addresses.length !== 2) {
         console.log('missing addresses');
@@ -76,6 +83,15 @@ async function processBankrReply() {
     return sleepThen(PENDING_BANKR_ADDRESSES_DELAY, processBankrReply);
 }
 processBankrReply();
+
+// testing
+// pendingBankrReply.push({
+//     bankrReply: {
+//         id: '1915408527532884335',
+//     },
+//     creatorTweet: {},
+//     minterTweet: {},
+// });
 
 async function getBankrAddresses(data) {
     if (NO_REPLY) {
@@ -107,19 +123,29 @@ export default async function zoracoin(req, res) {
 
     const start_time = addOneSecond(lastTweetTimestamp);
 
-    const minterTweets = await client.v2.search('@proximityagent mint', {
-        start_time: USE_START_TIME ? start_time : undefined,
-        'tweet.fields':
-            'author_id,created_at,referenced_tweets,conversation_id',
-    });
+    const minterTweets = await client.v2.search(
+        `${BOT_USERNAME} ${SEARCH_TERM}`,
+        {
+            start_time: USE_START_TIME ? start_time : undefined,
+            'tweet.fields':
+                'author_id,created_at,referenced_tweets,conversation_id',
+        },
+    );
 
     let seen = 0;
     const limit = 1;
     let latestValidTimestamp;
+    // this is the candidate data for a mint
+    let candidates = [];
     for await (const minterTweet of minterTweets) {
         if (++seen > limit) break;
 
         console.log('minterTweet.id:', minterTweet.id);
+
+        // store the first minterTweet we look at and then update start_time in search next time
+        if (!latestValidTimestamp) {
+            latestValidTimestamp = minterTweet.created_at;
+        }
 
         try {
             // did they reply to a tweet?
@@ -127,8 +153,8 @@ export default async function zoracoin(req, res) {
                 (t) => t.type === 'replied_to',
             )?.[0]?.id;
             // we only deal with tweets that are replies to another tweet that we want to mint
-            if (replied_to === undefined) {
-                console.log('not a reply');
+            if (typeof replied_to !== 'string') {
+                console.log('not a reply tweet');
                 continue;
             }
             console.log('tweet.replied_to', replied_to);
@@ -140,22 +166,62 @@ export default async function zoracoin(req, res) {
                 'tweet.fields':
                     'author_id,created_at,referenced_tweets,conversation_id,entities',
             });
-            const firstMedia = creatorTweet.includes?.media[0];
-            creatorTweet = creatorTweet.data;
-            let mintData = creatorTweet.text;
-            if (firstMedia === undefined) {
-                console.log('no media for tweet, using tweet text');
-            } else {
-                mintData = await fetch(firstMedia.url).then((r) =>
-                    r.arrayBuffer(),
-                );
-                console.log(
-                    'found media in tweet with bytelength',
-                    mintData.byteLength,
-                );
+            if (!creatorTweet) {
+                console.log('creatorTweet could not be found');
+                continue;
             }
-            creatorTweet.mintData = mintData;
+            const firstMedia = creatorTweet.includes?.media[0];
+            // store only the creatorTweet data after we get the first media entry
+            creatorTweet = creatorTweet.data;
 
+            // have we seen creatorTweet before?
+            const candidate = candidates.find(
+                (c) => c.creatorTweet.id === creatorTweet.id,
+            );
+            if (candidate !== undefined) {
+                // SWAPPING minterTweet is date is less than the candidate minterTweet meaning it was first
+                if (
+                    new Date(minterTweet.created_at) <
+                    new Date(candidate.minterTweet.created_at)
+                ) {
+                    const index = candidates.findIndex(
+                        (c) => c.creatorTweet.id === creatorTweet.id,
+                    );
+                    candidates[index] = {
+                        creatorTweet,
+                        minterTweet,
+                    };
+                }
+            } else {
+                // let's process the creatorTweet and store it
+                let mintData = creatorTweet.text;
+                if (firstMedia === undefined) {
+                    console.log('no media for tweet, using tweet text');
+                    // POTENTIALLY DISCARD
+                    const replied_to = creatorTweet.referenced_tweets.filter(
+                        (t) => t.type === 'replied_to',
+                    )?.[0]?.id;
+                    // creator tweet is another reply saying mint it with no media
+                    if (
+                        typeof replied_to === 'string' &&
+                        /mint it/gim.test(creatorTweet.text)
+                    ) {
+                        console.log('creator tweet is another "mint it" reply');
+                        continue;
+                    }
+                } else {
+                    mintData = await fetch(firstMedia.url).then((r) =>
+                        r.arrayBuffer(),
+                    );
+                    console.log(
+                        'found media in tweet with bytelength',
+                        mintData.byteLength,
+                    );
+                }
+                creatorTweet.mintData = mintData;
+            }
+
+            // creatorTweet is qualified
             // get handles for the creator and the minter
             const users = await client.v2.users(
                 [creatorTweet.author_id, minterTweet.author_id],
@@ -169,15 +235,7 @@ export default async function zoracoin(req, res) {
             minterTweet.username = minterUsername;
             creatorTweet.username = creatorUsername;
 
-            console.log(
-                'valid tweets for conversation_id:',
-                creatorTweet.conversation_id,
-            );
-
-            console.log(minterTweet);
-
-            // have all data, ready to get bankr addresses, don't wait for this method, continue looping
-            getBankrAddresses({
+            candidates.push({
                 creatorTweet,
                 minterTweet,
             });
@@ -185,12 +243,12 @@ export default async function zoracoin(req, res) {
             console.log('problem getting data from tweet');
             // TODO reply to minterTweet
         }
-
-        if (!latestValidTimestamp) {
-            latestValidTimestamp = minterTweet.created_at;
-        }
     }
 
+    // start processing mint
+    candidates.forEach((c) => getBankrAddresses(c));
+
+    // store for next search start_time
     lastTweetTimestamp = latestValidTimestamp;
 
     res.status(200).json({ success: true });
