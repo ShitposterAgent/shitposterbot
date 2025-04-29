@@ -1,19 +1,35 @@
 import { PinataSDK } from 'pinata';
+import { genMetadata } from './openai';
 
 export async function getMetadata(data) {
     const minter = data.minterTweet.username;
     const creator = data.creatorTweet.username;
-    return {
+
+    // openai gen, might not return accurate results, use defaults
+    let { name, symbol } = await genMetadata(
+        data.creatorTweet.text,
+        data.creatorTweet.imageUrl,
+    );
+    if (!name) {
+        name = `@${creator} x @${minter}`;
+    }
+    if (!symbol) {
+        symbol = (
+            creator.substring(0, 2) + minter.substring(0, 2)
+        ).toUpperCase();
+    }
+
+    data.metadata = {
         minter,
         creator,
-        symbol: (
-            creator.substring(0, 2) + minter.substring(0, 2)
-        ).toUpperCase(),
+        name,
+        symbol,
         minterAddress: data.minterTweet.address,
         creatorAddress: data.creatorTweet.address,
-        name: `@${creator} x @${minter}`,
         description: `Basednames X Mint. Created by @${creator}. Minted by @${minter}.`,
     };
+
+    return data.metadata;
 }
 const pinata = new PinataSDK({
     pinataJwt: process.env.PINATA_API_JWT,
@@ -21,7 +37,7 @@ const pinata = new PinataSDK({
 });
 
 export async function uploadImageFromData(data) {
-    const { name, description } = getMetadata(data);
+    const { name, description } = data.metadata;
 
     const blob = new Blob([data.creatorTweet.mintData], { type: fileType });
     const file = new File([blob], 'mintImage.jpg', { type: 'image/jpeg' });
@@ -40,7 +56,7 @@ export async function uploadImageFromData(data) {
 }
 
 export async function uploadTextFromData(data) {
-    const { name, description } = getMetadata(data);
+    const { name, description } = data.metadata;
 
     const file = new File([data.creatorTweet.mintData], 'mintText.txt', {
         type: 'text/plain',
@@ -64,6 +80,9 @@ export async function uploadTextFromData(data) {
 // switch for promised methods above
 
 export function pinataUpload(data) {
+    if (!data.metadata) {
+        return console.log('Call getMetadata first');
+    }
     if (typeof data.creatorTweet.mintData === 'string') {
         return uploadTextFromData(mintData);
     } else {

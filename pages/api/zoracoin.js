@@ -5,8 +5,10 @@ import {
     getClient,
     addOneSecond,
     replyToTweet,
+    getLatestConversationTweet,
     getReplyToTweetFromAuthor,
 } from '../../utils/twitter-utils';
+import { getMetadata, pinataUpload } from '../../utils/pinata';
 
 const BOT_USERNAME = '@proximityagent';
 const SEARCH_TERM = '"mint it"';
@@ -33,6 +35,7 @@ TODO
 [x] - check author_id is bankrbot and check all replies to bankrReply until satisfied or 10min elapsed
 [x] - make sure we're only considering the FIRST minterTweet
 [x] - upload media to pinata
+[x] - gen metadata with openai call
 [x] - mint zoracoin
 [] - reply in thread and mention UserA and UserB again
 
@@ -43,15 +46,16 @@ TESTING
 // deploy the zoracoin
 
 async function deployZora(data) {
+    // get metadata first it's then added to data.metadata
+    const { name, symbol, minter, creator, minterAddress, creatorAddress } =
+        getMetadata(data);
     const uri = await pinataUpload(data);
-
-    const { name, symbol, minterAddress, creatorAddress } = getMetadata(data);
 
     const path = 'foo';
 
     const address = process.env.FUNDING_ADDRESS;
 
-    evm.deployZora({
+    const { hash, explorerLink } = await evm.deployZora({
         path,
         name,
         address,
@@ -61,6 +65,14 @@ async function deployZora(data) {
         address,
         uri,
     });
+    const lastTweet = await getLatestConversationTweet(
+        await getClient(),
+        data.creatorTweet.id,
+    );
+    await replyToTweet(
+        `@${creator} a token was created from the original tweet in this thread by @${minter}!\nThe token name is ${name} and the symbol is ${symbol}. Here is the transaction: ${explorerLink}`,
+        lastTweet,
+    );
 }
 
 // this queue is for processing replies from @bankrbot after we asked it for 2 evm addresses
@@ -227,6 +239,7 @@ export default async function zoracoin(req, res) {
                         continue;
                     }
                 } else {
+                    creatorTweet.imageUrl = firstMedia.url;
                     // mint anything with media
                     mintData = await fetch(firstMedia.url).then((r) =>
                         r.arrayBuffer(),
