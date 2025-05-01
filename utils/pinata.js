@@ -10,10 +10,9 @@ export async function getMetadata(data) {
         data.creatorTweet.text,
         data.creatorTweet.imageUrl,
     );
-    if (!name) {
+    // something went wrong with openai call and we got empty object
+    if (!name || !symbol) {
         name = `@${creator} x @${minter}`;
-    }
-    if (!symbol) {
         symbol = (
             creator.substring(0, 2) + minter.substring(0, 2)
         ).toUpperCase();
@@ -33,13 +32,13 @@ export async function getMetadata(data) {
 }
 const pinata = new PinataSDK({
     pinataJwt: process.env.PINATA_API_JWT,
-    pinataGateway: 'blue-kind-caribou-725.mypinata.cloud',
+    pinataGateway: process.env.PINATA_API_GATEWAY,
 });
 
 export async function uploadImageFromData(data) {
     const { name, description } = data.metadata;
 
-    const blob = new Blob([data.creatorTweet.mintData], { type: fileType });
+    const blob = new Blob([data.creatorTweet.mintData], { type: 'image/jpeg' });
     const file = new File([blob], 'mintImage.jpg', { type: 'image/jpeg' });
 
     const { cid: fileCID } = await pinata.upload.public.file(file);
@@ -63,6 +62,8 @@ export async function uploadTextFromData(data) {
     });
     const { cid: fileCID } = await pinata.upload.public.file(file);
 
+    console.log(fileCID);
+
     const { cid } = await pinata.upload.public.json({
         name,
         description,
@@ -84,8 +85,8 @@ export function pinataUpload(data) {
         return console.log('Call getMetadata first');
     }
     if (typeof data.creatorTweet.mintData === 'string') {
-        return uploadTextFromData(mintData);
+        return uploadTextFromData(data);
     } else {
-        return uploadImageFromData(mintData);
+        return uploadImageFromData(data);
     }
 }

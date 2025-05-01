@@ -117,6 +117,7 @@ export const evm = {
     getGasPrice: async () => getProvider().getFeeData(),
     getBalance: ({ address }) => getProvider().getBalance(address),
     formatBalance: (balance) => ethers.formatEther(balance),
+    getTransactionReceipt: (hash) => getProvider().getTransactionReceipt(hash),
 
     // custom methods for zora coin creation
 
@@ -562,15 +563,21 @@ export const evm = {
     broadcastTransaction: async (serializedTx, second = false) => {
         console.log('BROADCAST serializedTx', serializedTx);
 
+        const provider = await getProvider();
+
         try {
-            const hash = await getProvider().send('eth_sendRawTransaction', [
+            const hash = await provider.send('eth_sendRawTransaction', [
                 serializedTx,
             ]);
+            const tx = await provider.waitForTransaction(hash as any, 1);
+
+            console.log('SUCCESS! TX:', tx);
             console.log('SUCCESS! TX HASH:', hash);
             console.log(`Explorer Link: ${evm.explorer}/tx/${hash}`);
 
             return {
                 success: true,
+                tx,
                 hash,
                 explorerLink: `${evm.explorer}/tx/${hash}`,
             };
