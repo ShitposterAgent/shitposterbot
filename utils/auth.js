@@ -3,7 +3,8 @@ const express = require('express');
 const session = require('express-session');
 const { TwitterApi } = require('twitter-api-v2');
 
-const CALLBACK = `https://4cb8-2001-569-7d3d-ce00-f63c-aa24-36a6-9818.ngrok-free.app/api/callback`;
+const PORT = 3001;
+const CALLBACK = `https://2781-2001-569-5806-f900-e519-49cb-1862-186.ngrok-free.app/api/callback`;
 const app = express();
 
 let cv, s;
@@ -90,6 +91,6 @@ app.get('/api/callback', async (req, res) => {
     }
 });
 
-app.listen(3000, () => {
-    console.log(`Example app listening on port ${3000}`);
+app.listen(PORT, () => {
+    console.log(`Example app listening on port ${PORT}`);
 });

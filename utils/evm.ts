@@ -223,8 +223,8 @@ export const evm = {
             const balance = await evm.getBalance({ address });
             console.log('Balance:', ethers.formatEther(balance), currency);
 
-            // return await completeEthereumTx({ baseTx, path });
-            return await evm.completeEthereumTxByDirectMPC({ baseTx, path });
+            return await evm.completeEthereumTx({ baseTx, path });
+            // return await evm.completeEthereumTxByDirectMPC({ baseTx, path });
         } catch (error) {
             console.error('Error in Zora token deployment:', error);
             console.log(error?.info, error?.info?.payload?.params);

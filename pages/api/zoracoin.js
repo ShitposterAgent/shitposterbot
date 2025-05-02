@@ -10,43 +10,37 @@ import {
 } from '../../utils/twitter-utils';
 import { getMetadata, pinataUpload } from '../../utils/pinata';
 
+// !!! CONFIG CHECK BEFORE DEPLOY TO PHALA !!!
 const BOT_USERNAME = '@proximityagent';
-const SEARCH_TERM = '"mint it"';
+const SEARCH_TERM = '"coin"';
 const BANKR_BOT_ID = '1864452692221022210';
+// limit X usernames allowed to coin it
+const ALLOWED_USERNAMES = [
+    'mattdlockyer',
+    'miaojiang',
+    'kendaIIc',
+    'EdsonAlcala',
+    'ThePiVortex',
+];
+// can test independently
+const TEST_GETLOGS = false;
+// check deployZora method for how these work
 const TEST_METADATA = false;
 const TEST_PINATA = false;
 const TEST_DEPLOY = false;
-const NO_SEARCH = true;
-const NO_REPLY = true;
+// DISABLE THESE IF DOING ISOLATED TESTING
+const NO_SEARCH = false;
+const NO_REPLY = false;
+// LEAVE THIS ON IN PRODUCTION
 const USE_START_TIME = true;
+let lastTweetTimestamp =
+    process.env.TWITTER_LAST_TIMESTAMP || '2025-04-22T23:07:47.000Z';
 
 // queues
 const PENDING_BANKR_ADDRESSES_DELAY = 5000;
 const pendingBankrReply = [];
 
-let lastTweetTimestamp = '2025-04-22T23:07:47.000Z';
-
 // main endpoint for cron job is at the bottom and the flow works it's way up
-
-/*
-
-TODO
-[x] - get original tweet, text, media, etc...
-[x] - get usernames
-[x] - set up reply to User B tweet with @bankrbot what are the addresses of @UserA and @UserB
-[x] - listen for replies to get @bankrbot addresses
-[x] - check author_id is bankrbot and check all replies to bankrReply until satisfied or 10min elapsed
-[x] - make sure we're only considering the FIRST minterTweet
-[x] - upload media to pinata
-[x] - gen metadata with openai call
-[x] - mint zoracoin
-[] - reply in thread and mention UserA and UserB again
-
-TESTING
-[] - TBD
-*/
-
-// get logs filtered by topic for address
 
 const getCoinAddressFromLogs = async (
     hash = '0x27d65e59cc4ffd186532e2fd6863a2b4cf49d9befc6f59315d74271f42b7688b',
@@ -87,9 +81,11 @@ const getCoinAddressFromLogs = async (
     }
 };
 
-getCoinAddressFromLogs(
-    '0xb1e20a00662c52d3e750d5e7cac220b3b9716f9e7c7fbcbceb69ab3a20033cc2',
-);
+if (TEST_GETLOGS) {
+    getCoinAddressFromLogs(
+        '0xb1e20a00662c52d3e750d5e7cac220b3b9716f9e7c7fbcbceb69ab3a20033cc2',
+    );
+}
 
 // deploy the zoracoin
 
@@ -110,14 +106,15 @@ async function deployZora(data) {
     }
     const uri = `https://ipfs.io/ipfs/${cid}`;
 
-    // TODO UPDATE accountId FOR GENERATE ADDRESS
-    const path = 'foo';
+    // the shade agent is the only one deriving the account to sign for zoracoin mints, we'll fund this address
+    // generate address independently by calling /api/address
+    const path = 'zoracoin';
     const { address } = await generateAddress({
         publicKey:
             networkId === 'testnet'
                 ? process.env.MPC_PUBLIC_KEY_TESTNET
                 : process.env.MPC_PUBLIC_KEY_MAINNET,
-        accountId: 'shadeagent.near',
+        accountId: process.env.NEXT_PUBLIC_contractId,
         path,
         chain: 'evm',
     });
@@ -135,16 +132,24 @@ async function deployZora(data) {
         uri,
     });
 
+    // generate last tweet in conversation thread
+    // find new coin address from tx (if possible)
     const coinAddress = await getCoinAddressFromLogs(hash, tx.blockNumber);
-
-    // const lastTweet = await getLatestConversationTweet(
-    //     await getClient(),
-    //     data.creatorTweet.id,
-    // );
-    // await replyToTweet(
-    //     `@${creator} a token was created from the original tweet in this thread by @${minter}!\nThe token name is ${name} and the symbol is ${symbol}. Here is the transaction: ${explorerLink}`,
-    //     lastTweet,
-    // );
+    const lastTweet = await getLatestConversationTweet(
+        await getClient(),
+        data.creatorTweet.id,
+    );
+    if (coinAddress) {
+        await replyToTweet(
+            `Coined it!\nhttps://zora.co/coin/base:${coinAddress}\nToken name: ${name} \nSymbol: ${symbol}!`,
+            lastTweet,
+        );
+    } else {
+        await replyToTweet(
+            `Coined it!\n${explorerLink}\nToken name: ${name} \nSymbol: ${symbol}!`,
+            lastTweet,
+        );
+    }
 }
 
 if (TEST_METADATA || TEST_PINATA || TEST_DEPLOY) {
@@ -353,6 +358,17 @@ export default async function zoracoin(req, res) {
             );
             minterTweet.username = minterUsername;
             creatorTweet.username = creatorUsername;
+
+            if (
+                ALLOWED_USERNAMES?.length > 0 &&
+                !ALLOWED_USERNAMES.includes(minterTweet.username)
+            ) {
+                console.log(
+                    'ALLOWED_USERNAMES ACTIVE: username not valid:',
+                    minterTweet.username,
+                );
+                continue;
+            }
 
             // push the candidate
             candidates.push({
