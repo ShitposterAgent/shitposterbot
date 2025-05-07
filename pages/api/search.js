@@ -7,6 +7,7 @@ import {
     getLatestConversationTweet,
 } from '../../utils/twitter-client';
 import { sendBankrTransfer } from '../../utils/non-cust';
+import { readState, writeState } from '../../utils/state';
 
 const DEPOSIT_PROCESSING_DELAY = 5000;
 const REPLY_PROCESSING_DELAY = 15000;
@@ -14,7 +15,8 @@ const REFUND_PROCESSING_DELAY = 60000;
 const MAX_DEPOSIT_ATTEMPTS = 12 * 60; // 12 per minute * 60 mins
 const pendingReply = [];
 const pendingDeposit = [];
-let lastTweetTimestamp = parseInt(process.env.TWITTER_LAST_TIMESTAMP);
+let state = readState();
+let lastTweetTimestamp = state.lastTweetTimestamp || parseInt(process.env.TWITTER_LAST_TIMESTAMP) || 0;
 let waitingForReset = 0;
 const pendingRefund = [];
 const refunded = [];
@@ -374,6 +376,17 @@ async function generateAIReply(command, user) {
     }
 }
 
+async function updateLastSeenTweet(tweet) {
+    if (tweet && tweet.created_at) {
+        const ts = Math.floor(new Date(tweet.created_at).getTime() / 1000);
+        if (ts > lastTweetTimestamp) {
+            lastTweetTimestamp = ts;
+            state.lastTweetTimestamp = lastTweetTimestamp;
+            writeState(state);
+        }
+    }
+}
+
 export default async function search(req, res) {
     // owner only
     // jump start the queues that process everything
@@ -510,6 +523,7 @@ export default async function search(req, res) {
             }
             await replyToTweet(reply, tweet.id);
         }
+        await updateLastSeenTweet(tweet);
     }
 
     // we won't see these valid tweets in the next API call
