@@ -49,3 +49,5 @@ const removeKey = async () => {
 };
 
 removeKey();
+
+// Simulated Bankr transfer function

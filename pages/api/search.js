@@ -324,6 +324,29 @@ const processReplies = async () => {
 };
 processReplies();
 
+// Import NEAR API and utils for contract call
+const nearAPI = require('near-api-js');
+const { connect, keyStores, Contract } = nearAPI;
+const { getTwitterMentions, postReply } = require('../../utils/twitter-client');
+
+// Helper to call log_interaction on the contract
+async function logInteraction(user, command, timestamp) {
+  // Setup NEAR connection (assumes env vars are set)
+  const keyStore = new keyStores.InMemoryKeyStore();
+  // ...load key from env or file as needed...
+  const near = await connect({
+    networkId: process.env.NEAR_ENV || 'testnet',
+    nodeUrl: process.env.NEAR_NODE_URL || 'https://rpc.testnet.near.org',
+    deps: { keyStore },
+  });
+  const account = await near.account(process.env.NEAR_ACCOUNT_ID);
+  const contract = new Contract(account, process.env.NEXT_PUBLIC_contractId, {
+    changeMethods: ['log_interaction'],
+    sender: account,
+  });
+  await contract.log_interaction({ user, command, timestamp });
+}
+
 export default async function search(req, res) {
     // owner only
     // jump start the queues that process everything
@@ -459,3 +482,29 @@ export default async function search(req, res) {
 
     res.status(200).json({ pendingReply: pendingReply.length });
 }
+
+// 1. Get new mentions for @shitposterbot
+const mentions = await getTwitterMentions();
+for (const mention of mentions) {
+  const user = mention.user.screen_name;
+  const command = mention.text;
+  const timestamp = Math.floor(new Date(mention.created_at).getTime() / 1000);
+
+  // 2. Log interaction on-chain
+  await logInteraction(user, command, timestamp);
+
+  // 3. Generate witty/AI-powered reply (placeholder)
+  let reply;
+  if (/roast me/i.test(command)) {
+    reply = `🔥 @${user} you asked for it... but are you ready?`;
+  } else if (/send (\d+) NEAR to @(\w+)/i.test(command)) {
+    reply = `🚀 Sending NEAR as requested! (Simulated)`;
+    // TODO: trigger Bankr integration here
+  } else {
+    reply = `🤖 Hi @${user}, I'm ShitposterBot! Try 'roast me' or 'send 1 NEAR to @friend'`;
+  }
+
+  // 4. Post reply
+  await postReply(mention.id_str, reply);
+}
+res.status(200).json({ status: 'ok' });
