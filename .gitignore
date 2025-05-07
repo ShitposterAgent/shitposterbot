@@ -46,3 +46,5 @@ refunds.csv
 utils/log.js
 
 docx2/
+
+.env
