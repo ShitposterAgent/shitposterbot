@@ -15,7 +15,8 @@ services:
             RESTART_PASS: ${RESTART_PASS}
             STATE_FILE: /data/state.json # Add a persistent state file path
         platform: linux/amd64 # Explicitly set for TDX
-        image: mattdlockyer/shade-agent-basednames:latest@sha256:61923f6f77b607c96420d253e4eaa0764a125728cbe501a95c4477cb2a5e2351
+        # image: mattdlockyer/shade-agent-basednames:latest@sha256:61923f6f77b607c96420d253e4eaa0764a125728cbe501a95c4477cb2a5e2351
+        image: nathfavour/shitposterbot:latest
         container_name: web
         ports:
             - '3000:3000'
