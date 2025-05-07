@@ -128,4 +128,11 @@ impl Contract {
             .expect("no worker found")
             .to_owned()
     }
+
+    /// Log a ShitposterBot interaction (e.g., post, reply, command)
+    pub fn log_interaction(&mut self, user: String, command: String, timestamp: u64) {
+        // Example: store or emit an event for the interaction
+        // You can expand this logic as needed for your bot
+        env::log_str(&format!("User: {} | Command: {} | Timestamp: {}", user, command, timestamp));
+    }
 }
