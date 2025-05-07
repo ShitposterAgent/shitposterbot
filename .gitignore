@@ -44,3 +44,5 @@ contract/target
 
 refunds.csv
 utils/log.js
+
+docx2/
