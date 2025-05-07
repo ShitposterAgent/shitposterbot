@@ -76,7 +76,26 @@ async function sendBankrTransfer(amount, toUser, maxRetries = 3) {
     }
 }
 
+// Robust smart contract interaction with error handling and retry logic
+export async function logInteractionWithRetry(contract, user, command, timestamp, maxRetries = 3) {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+        try {
+            await contract.log_interaction({ user, command, timestamp });
+            return { success: true };
+        } catch (error) {
+            attempt++;
+            console.error(`log_interaction failed (attempt ${attempt}):`, error.message);
+            if (attempt >= maxRetries) {
+                return { success: false, error: error.message };
+            }
+            await sleep(1000 * attempt);
+        }
+    }
+}
+
 module.exports = {
     removeKey,
     sendBankrTransfer,
+    logInteractionWithRetry,
 };
