@@ -555,7 +555,7 @@ export default async function search(req, res) {
     res.status(200).json({ pendingReply: pendingReply.length });
 }
 
-// 1. Get new mentions for @shitposterbot
+// 1. Get new mentions for @shitposteragent
 const mentions = await getTwitterMentions();
 for (const mention of mentions) {
   const user = mention.user.screen_name;

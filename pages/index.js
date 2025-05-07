@@ -80,7 +80,7 @@ export default function Home() {
                     <div className={styles.card}>
                         <h2>🚀 How It Works</h2>
                         <ol>
-                            <li>Post a command on X (e.g., "Hey @shitposterbot, roast me!" or "Send 1 NEAR to @friend!")</li>
+                            <li>Post a command on X (e.g., "Hey @shitposteragent, roast me!" or "Send 1 NEAR to @friend!")</li>
                             <li>ShitposterBot interprets, replies, and triggers on-chain actions if needed.</li>
                             <li>All actions are transparent, verifiable, and non-custodial.</li>
                         </ol>
@@ -97,7 +97,7 @@ export default function Home() {
                     </div>
                     <div className={styles.card}>
                         <h2>💬 Try It!</h2>
-                        <p>Tag <b>@shitposterbot</b> on X and see the magic happen!</p>
+                        <p>Tag <b>@shitposteragent</b> on X and see the magic happen!</p>
                         <a href="https://x.com/shitposteragent" target="_blank" rel="noopener noreferrer" className={styles.button}>
                             Follow on X
                         </a>

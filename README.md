@@ -18,7 +18,7 @@ Welcome to **ShitposterBot**, the most advanced, intelligent, and unstoppable so
 
 ## 🏁 How It Works
 
-1. **User Command:** Post a command on X (e.g., "Hey @shitposterbot, roast me!" or "Send 1 NEAR to @friend!")
+1. **User Command:** Post a command on X (e.g., "Hey @shitposteragent, roast me!" or "Send 1 NEAR to @friend!")
 2. **AI Magic:** ShitposterBot interprets your command, crafts a witty or helpful response, and determines if an on-chain action is needed.
 3. **On-Chain Execution:** If required, the bot triggers a smart contract call using NEAR chain signatures—verifiable, non-custodial, and logged.
 4. **Autonomous & Trustless:** No ongoing user input needed. All actions are transparent, open source, and you always retain control of your assets.
