@@ -1,32 +1,33 @@
-# 🤖💥 ShitposterBot: The Ultimate On-Chain Social Media AI Agent 🚀🔥
+# 🤖🔥 ShitposterBot: The Autonomous, On-Chain Social Media Genius 🚀
 
-Welcome to **ShitposterBot**, the next-level, hackathon-ready, TEE-powered, on-chain social media agent! Built for the NEAR Shade Agents hackathon, ShitposterBot is not just a bot—it's a revolution in how you interact with X (Twitter) and the blockchain. Get ready for a wild ride! 🎢
-
----
-
-## 🌟 What is ShitposterBot?
-
-ShitposterBot is a **non-custodial, verifiable, and autonomous AI agent** that:
-- Listens to your commands on X (Twitter) 🐦
-- Automates posts, replies, and actions with AI-powered wit 🤖
-- Executes on-chain actions (send funds, call contracts, more!) via the NEAR Shade Agent stack 💸
-- Runs inside a TEE for maximum security and trust 🔒
-- Is fully open source and hackathon-compliant! 🏆
+Welcome to **ShitposterBot**, the most advanced, intelligent, and unstoppable social media agent ever built! Powered by the robust **shitposteragent ecosystem** and the NEAR Shade Agent stack, ShitposterBot is your gateway to next-level, on-chain, AI-driven social media automation and management. 
 
 ---
 
-## 🏁 How It Works (Step by Step)
+## 🌐 What Makes ShitposterBot Unique?
+
+- **Intelligent AI:** ShitposterBot doesn't just post—it understands, replies, and interacts with wit, humor, and context-aware intelligence. 
+- **Fully Autonomous:** No hand-holding. Users interact with ShitposterBot entirely from X (Twitter). The bot handles everything else—autonomously.
+- **On-Chain Power:** Executes blockchain actions (send funds, call contracts, more) using NEAR chain signatures, all verifiable and non-custodial.
+- **TEE Security:** Runs inside a Trusted Execution Environment (TEE) for maximum security, privacy, and trust.
+- **Shitposteragent Ecosystem:** Built on a modular, open-source platform for social media automation, management, and innovation.
+- **Bankr Integration:** Users can transfer tokens from Bankr directly on X, seamlessly.
+- **Open Source:** MIT licensed, public repo, and hackathon-compliant.
+
+---
+
+## 🏁 How It Works
 
 1. **User Command:** Post a command on X (e.g., "Hey @shitposterbot, roast me!" or "Send 1 NEAR to @friend!")
-2. **Bot Magic:** ShitposterBot (running in a TEE) reads your command, interprets it with AI, and determines the required action.
-3. **On-Chain Power:** If needed, the bot triggers a smart contract call (e.g., send funds, verify action) using NEAR chain signatures. All actions are verifiable and non-custodial!
-4. **Autonomous Execution:** No ongoing user input needed. The bot handles everything, from social media to blockchain, seamlessly.
-5. **Transparent & Trustless:** All actions are logged, verifiable, and open source. You keep control of your assets at all times.
+2. **AI Magic:** ShitposterBot interprets your command, crafts a witty or helpful response, and determines if an on-chain action is needed.
+3. **On-Chain Execution:** If required, the bot triggers a smart contract call using NEAR chain signatures—verifiable, non-custodial, and logged.
+4. **Autonomous & Trustless:** No ongoing user input needed. All actions are transparent, open source, and you always retain control of your assets.
 
 ---
 
-## 🛠️ Tech Stack & Hackathon Compliance
+## 🛠️ Tech Stack
 
+- **shitposteragent Ecosystem:** Modular platform for building, deploying, and managing social media agents.
 - **NEAR Shade Agent Stack:**
   - Smart contract for agent verification & access control
   - TEE worker agent (Next.js) for secure, verifiable execution
@@ -34,10 +35,8 @@ ShitposterBot is a **non-custodial, verifiable, and autonomous AI agent** that:
 - **X (Twitter) Integration:**
   - Listens and responds to user commands
   - Handles token transfers via Bankr directly on X
-- **Open Source:**
-  - MIT License, public repo, all code original and attributed
 - **Security:**
-  - Runs in a TEE, codehash-verified, non-custodial
+  - TEE, codehash-verified, non-custodial
 
 ---
 
@@ -52,8 +51,8 @@ ShitposterBot is a **non-custodial, verifiable, and autonomous AI agent** that:
 ### Installation
 ```bash
 # Clone the repo
- git clone https://github.com/shitposteragent/shitposterbot.git
- cd shitposterbot
+git clone https://github.com/shitposteragent/shitposterbot.git
+cd shitposterbot
 # Install dependencies
 yarn install
 ```
@@ -78,12 +77,13 @@ node utils/deploy.js
 
 ---
 
-## 🧠 Unique Features
-- **AI-Powered Shitposting:** Generates witty, savage, or helpful replies on X
+## 🧠 Features That Set ShitposterBot Apart
+- **AI-Powered Shitposting:** Generates context-aware, witty, or savage replies on X
 - **On-Chain Actions:** Send funds, call contracts, or trigger any blockchain action—directly from X
 - **TEE Security:** All actions are verifiable, non-custodial, and run in a secure enclave
 - **Bankr Integration:** Users can transfer tokens from Bankr directly on X
 - **Open Source & Hackathon-Ready:** Meets all requirements for the NEAR Shade Agents hackathon
+- **shitposteragent Ecosystem:** Easily extend, manage, and deploy new social media automations
 
 ---
 
@@ -92,6 +92,7 @@ node utils/deploy.js
 - **Trustless:** All actions are on-chain, transparent, and verifiable
 - **Fun & Engaging:** Spice up your social media with AI-powered automation
 - **Next-Gen Security:** TEE + codehash validation = maximum trust
+- **Ecosystem Ready:** Build your own bots and automations on the shitposteragent platform
 
 ---
 
@@ -100,6 +101,7 @@ node utils/deploy.js
 - [NEAR Chain Signatures](https://docs.near.org/concepts/abstraction/chain-signatures)
 - [Phala Cloud (TEE)](https://phala.network/)
 - [Twitter API](https://developer.twitter.com/en/docs/twitter-api)
+- [shitposteragent Ecosystem](https://github.com/shitposteragent)
 
 ---
 
