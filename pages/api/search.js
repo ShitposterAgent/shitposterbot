@@ -348,6 +348,32 @@ async function logInteraction(user, command, timestamp) {
   await contract.log_interaction({ user, command, timestamp });
 }
 
+// Enhanced command parsing and AI reply placeholder
+function parseCommand(text) {
+    // Normalize and extract intent
+    const lower = text.toLowerCase();
+    if (/roast\s+me|roast\b/.test(lower)) {
+        return { type: 'roast' };
+    }
+    const sendMatch = lower.match(/send\s+(\d+(?:\.\d+)?)\s*near\s*to\s*@?(\w+)/);
+    if (sendMatch) {
+        return { type: 'send', amount: sendMatch[1], toUser: sendMatch[2] };
+    }
+    return { type: 'unknown' };
+}
+
+async function generateAIReply(command, user) {
+    // Placeholder for LLM/AI integration
+    if (command.type === 'roast') {
+        // TODO: Replace with LLM call
+        return `🔥 @${user}, you asked for a roast... hope you can handle the heat!`;
+    } else if (command.type === 'send') {
+        return `🚀 Sending ${command.amount} NEAR to @${command.toUser} (simulated)!`;
+    } else {
+        return `🤖 Hi @${user}, I'm ShitposterBot! Try 'roast me' or 'send 1 NEAR to @friend'`;
+    }
+}
+
 export default async function search(req, res) {
     // owner only
     // jump start the queues that process everything
@@ -469,16 +495,20 @@ export default async function search(req, res) {
         if (!SEARCH_ONLY) {
             pendingReply.push(tweet);
         } else {
-            // Check for Bankr command and trigger transfer
-            const match = tweet.text.match(/send (\d+) NEAR to @(\w+)/i);
-            if (match) {
-                const amount = match[1];
-                const toUser = match[2];
-                await sendBankrTransfer(amount, toUser);
-                await replyToTweet(`🚀 Sent ${amount} NEAR to @${toUser} via Bankr!`, tweet.id);
+            // Enhanced command parsing
+            const command = parseCommand(tweet.text);
+            let reply;
+            if (command.type === 'send') {
+                const result = await sendBankrTransfer(command.amount, command.toUser);
+                if (result.success) {
+                    reply = `🚀 Sent ${command.amount} NEAR to @${command.toUser} via Bankr!`;
+                } else {
+                    reply = `❌ Failed to send NEAR: ${result.error}`;
+                }
             } else {
-                console.log(tweet);
+                reply = await generateAIReply(command, tweet.author_id);
             }
+            await replyToTweet(reply, tweet.id);
         }
     }
 
