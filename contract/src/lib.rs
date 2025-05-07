@@ -135,4 +135,16 @@ impl Contract {
         // You can expand this logic as needed for your bot
         env::log_str(&format!("User: {} | Command: {} | Timestamp: {}", user, command, timestamp));
     }
+
+    /// Store a witty reply or on-chain action for a user command
+    pub fn store_reply(&mut self, user: String, command: String, reply: String, timestamp: u64) {
+        // For demonstration, just log the reply (extend to store in contract state if needed)
+        env::log_str(&format!("Reply stored | User: {} | Command: {} | Reply: {} | Timestamp: {}", user, command, reply, timestamp));
+    }
+
+    /// Example: Store a user action (e.g., transfer, roast, etc.)
+    pub fn store_action(&mut self, user: String, action: String, details: String, timestamp: u64) {
+        // For demonstration, just log the action (extend to store in contract state if needed)
+        env::log_str(&format!("Action stored | User: {} | Action: {} | Details: {} | Timestamp: {}", user, action, details, timestamp));
+    }
 }
