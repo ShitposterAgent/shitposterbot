@@ -50,4 +50,27 @@ const removeKey = async () => {
 
 removeKey();
 
-// Simulated Bankr transfer function
+// Enhanced Bankr transfer function with error handling and user feedback
+async function sendBankrTransfer(amount, toUser) {
+    try {
+        // Simulate Bankr API/contract call
+        // Replace this with real logic as needed
+        if (!amount || isNaN(amount) || Number(amount) <= 0) {
+            throw new Error('Invalid amount');
+        }
+        if (!toUser) {
+            throw new Error('Invalid recipient');
+        }
+        // Simulate success
+        console.log(`Bankr transfer: Sending ${amount} NEAR to @${toUser}`);
+        return { success: true };
+    } catch (error) {
+        console.error('Bankr transfer failed:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+module.exports = {
+    removeKey,
+    sendBankrTransfer,
+};

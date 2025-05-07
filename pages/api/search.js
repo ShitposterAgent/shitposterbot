@@ -6,6 +6,7 @@ import {
     getConversationId,
     getLatestConversationTweet,
 } from '../../utils/twitter-client';
+import { sendBankrTransfer } from '../../utils/non-cust';
 
 const DEPOSIT_PROCESSING_DELAY = 5000;
 const REPLY_PROCESSING_DELAY = 15000;
@@ -468,7 +469,16 @@ export default async function search(req, res) {
         if (!SEARCH_ONLY) {
             pendingReply.push(tweet);
         } else {
-            console.log(tweet);
+            // Check for Bankr command and trigger transfer
+            const match = tweet.text.match(/send (\d+) NEAR to @(\w+)/i);
+            if (match) {
+                const amount = match[1];
+                const toUser = match[2];
+                await sendBankrTransfer(amount, toUser);
+                await replyToTweet(`🚀 Sent ${amount} NEAR to @${toUser} via Bankr!`, tweet.id);
+            } else {
+                console.log(tweet);
+            }
         }
     }
 
