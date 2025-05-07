@@ -52,13 +52,23 @@ export default function Home() {
             <Overlay message={message} />
 
             <main className={styles.main}>
-                <h1 className={styles.title}>
-                    🤖🔥 ShitposterBot
-                </h1>
-                <p className={styles.description}>
-                    The Autonomous, On-Chain Social Media Genius<br/>
-                    <span style={{fontWeight: 'bold', color: '#ff4d4f'}}>AI-powered. Non-custodial. TEE-secured. Fun.</span>
-                </p>
+                <section className={styles.heroSection}>
+                    <h1 className={styles.title}>
+                        🤖🔥 ShitposterBot
+                    </h1>
+                    <p className={styles.description}>
+                        <span className={styles.gradientText}>The Autonomous, On-Chain Social Media Genius</span><br/>
+                        <span style={{fontWeight: 'bold', color: '#ff4d4f'}}>AI-powered. Non-custodial. TEE-secured. Fun.</span>
+                    </p>
+                    <div className={styles.heroActions}>
+                        <a href="https://x.com/shitposteragent" target="_blank" rel="noopener noreferrer" className={styles.ctaButton}>
+                            🚀 Try on X
+                        </a>
+                        <button className={styles.ctaButton} onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})}>
+                            🛠️ Agent Dashboard
+                        </button>
+                    </div>
+                </section>
                 <div className={styles.grid}>
                     <div className={styles.card}>
                         <h2>🌐 What is ShitposterBot?</h2>
@@ -93,34 +103,44 @@ export default function Home() {
                         </a>
                     </div>
                 </div>
-                {/* --- Existing functionality below, styled as an advanced dashboard --- */}
+                {/* --- Modern dashboard below --- */}
                 <section className={styles.dashboard}>
                     <h2 className={styles.subtitle}>🛠️ Agent Dashboard</h2>
-                    <div className={styles.grid}>
-                        <div className={styles.card}>
+                    <div className={styles.dashboardGrid}>
+                        <div className={styles.dashboardCard}>
                             <h3>Worker Agent Account</h3>
-                            <p>
-                                <b>Account:</b> {accountId?.length >= 24 ? accountId?.substring(0, 24) + '...' : accountId}
-                                <br />
-                                <button className={styles.btn} onClick={() => { navigator.clipboard.writeText(accountId); setMessageHide('copied', 500); }}>copy</button>
-                                <br />
-                                <b>Balance:</b> {balance ? formatNearAmount(balance.available, 4) : 0}
-                            </p>
+                            <div className={styles.accountRow}>
+                                <span className={styles.accountId}>{accountId?.length >= 24 ? accountId?.substring(0, 24) + '...' : accountId}</span>
+                                <button className={styles.copyBtn} onClick={() => { navigator.clipboard.writeText(accountId); setMessageHide('copied', 500); }}>Copy</button>
+                            </div>
+                            <div className={styles.balanceRow}>
+                                <span className={styles.balanceLabel}>Balance:</span>
+                                <span className={styles.balanceValue}>{balance ? formatNearAmount(balance.available, 4) : 0}</span>
+                            </div>
                         </div>
                         {balance.available !== '0' && (
                             <>
-                                <a href="#" className={styles.card} onClick={async () => { setMessage('Registering Worker'); let res; try { res = await fetch('/api/register').then((r) => r.json()); } catch (e) { console.log(e); setMessageHide('register_worker error: ' + JSON.stringify(e, 4)); } setMessageHide(<><p>register_worker response:</p><p className={styles.code}>registered: {JSON.stringify(res.registered)}</p></>); }}>
+                                <div className={styles.dashboardCard}>
                                     <h3>Register Worker Agent</h3>
-                                    <p>Register the Worker Agent in the smart contract:<br /><br />{process.env.NEXT_PUBLIC_contractId}</p>
-                                </a>
-                                <a href="#" className={styles.card} onClick={async () => { setMessage('Calling get_worker', accountId); let res; try { res = await contractView({ accountId: accountId, methodName: 'get_worker', args: { account_id: accountId, }, }); console.log(res); } catch (e) { console.log(e); setMessageHide('get_worker error: ' + JSON.stringify(e, 4)); } setMessageHide(<><p>get_worker response:</p><p className={styles.code}>checksum: {res.checksum}</p><p className={styles.code}>codehash: {res.codehash}</p></>); }}>
+                                    <button className={styles.actionBtn} onClick={async () => { setMessage('Registering Worker'); let res; try { res = await fetch('/api/register').then((r) => r.json()); } catch (e) { console.log(e); setMessageHide('register_worker error: ' + JSON.stringify(e, 4)); } setMessageHide(<><p>register_worker response:</p><p className={styles.code}>registered: {JSON.stringify(res.registered)}</p></>); }}>
+                                        Register
+                                    </button>
+                                    <p className={styles.contractId}>Contract: {process.env.NEXT_PUBLIC_contractId}</p>
+                                </div>
+                                <div className={styles.dashboardCard}>
                                     <h3>Get Worker Info</h3>
+                                    <button className={styles.actionBtn} onClick={async () => { setMessage('Calling get_worker', accountId); let res; try { res = await contractView({ accountId: accountId, methodName: 'get_worker', args: { account_id: accountId, }, }); console.log(res); } catch (e) { console.log(e); setMessageHide('get_worker error: ' + JSON.stringify(e, 4)); } setMessageHide(<><p>get_worker response:</p><p className={styles.code}>checksum: {res.checksum}</p><p className={styles.code}>codehash: {res.codehash}</p></>); }}>
+                                        Get Info
+                                    </button>
                                     <p>(registered only)</p>
-                                </a>
-                                <a href="#" className={styles.card} onClick={async () => { setMessage('Calling is_verified_by_codehash'); const res = await fetch('/api/isVerified').then((r) => r.json()); setMessageHide(<><p>is_verified_by_codehash response:</p><p className={styles.code}>verified: {JSON.stringify(res.verified)}</p></>); }}>
+                                </div>
+                                <div className={styles.dashboardCard}>
                                     <h3>Call Protected Method</h3>
+                                    <button className={styles.actionBtn} onClick={async () => { setMessage('Calling is_verified_by_codehash'); const res = await fetch('/api/isVerified').then((r) => r.json()); setMessageHide(<><p>is_verified_by_codehash response:</p><p className={styles.code}>verified: {JSON.stringify(res.verified)}</p></>); }}>
+                                        Call
+                                    </button>
                                     <p>(registered only)</p>
-                                </a>
+                                </div>
                             </>
                         )}
                     </div>
