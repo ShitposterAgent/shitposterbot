@@ -331,6 +331,7 @@ processReplies();
 const nearAPI = require('near-api-js');
 const { connect, keyStores, Contract } = nearAPI;
 const { getTwitterMentions, postReply } = require('../../utils/twitter-client');
+const { logInteractionWithRetry } = require('../../utils/non-cust');
 
 // Helper to call log_interaction on the contract
 async function logInteraction(user, command, timestamp) {
@@ -344,10 +345,27 @@ async function logInteraction(user, command, timestamp) {
   });
   const account = await near.account(process.env.NEAR_ACCOUNT_ID);
   const contract = new Contract(account, process.env.NEXT_PUBLIC_contractId, {
-    changeMethods: ['log_interaction'],
+    changeMethods: ['log_interaction', 'store_reply', 'store_action'],
     sender: account,
   });
   await contract.log_interaction({ user, command, timestamp });
+}
+
+// Helper to call store_reply and store_action on the contract
+async function storeReply(contract, user, command, reply, timestamp) {
+    try {
+        await contract.store_reply({ user, command, reply, timestamp });
+    } catch (e) {
+        console.error('store_reply failed:', e.message);
+    }
+}
+
+async function storeAction(contract, user, action, details, timestamp) {
+    try {
+        await contract.store_action({ user, action, details, timestamp });
+    } catch (e) {
+        console.error('store_action failed:', e.message);
+    }
 }
 
 // Enhanced command parsing and AI reply placeholder
@@ -545,20 +563,32 @@ for (const mention of mentions) {
   const timestamp = Math.floor(new Date(mention.created_at).getTime() / 1000);
 
   // 2. Log interaction on-chain
-  await logInteraction(user, command, timestamp);
+  await logInteractionWithRetry(contract, user, command, timestamp);
 
   // 3. Generate witty/AI-powered reply (placeholder)
   let reply;
+  let actionType = 'unknown';
+  let actionDetails = '';
   if (/roast me/i.test(command)) {
     reply = `🔥 @${user} you asked for it... but are you ready?`;
+    actionType = 'roast';
+    actionDetails = reply;
   } else if (/send (\d+) NEAR to @(\w+)/i.test(command)) {
     reply = `🚀 Sending NEAR as requested! (Simulated)`;
+    actionType = 'send';
+    actionDetails = reply;
     // TODO: trigger Bankr integration here
   } else {
     reply = `🤖 Hi @${user}, I'm ShitposterBot! Try 'roast me' or 'send 1 NEAR to @friend'`;
+    actionType = 'info';
+    actionDetails = reply;
   }
 
-  // 4. Post reply
+  // 4. Store reply and action on-chain
+  await storeReply(contract, user, command, reply, timestamp);
+  await storeAction(contract, user, actionType, actionDetails, timestamp);
+
+  // 5. Post reply
   await postReply(mention.id_str, reply);
 }
 res.status(200).json({ status: 'ok' });
