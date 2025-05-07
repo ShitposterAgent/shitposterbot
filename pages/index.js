@@ -122,7 +122,15 @@ export default function Home() {
                             <>
                                 <div className={styles.dashboardCard}>
                                     <h3>Register Worker Agent</h3>
-                                    <button className={styles.actionBtn} onClick={async () => { setMessage('Registering Worker'); let res; try { res = await fetch('/api/register').then((r) => r.json()); } catch (e) { console.log(e); setMessageHide('register_worker error: ' + JSON.stringify(e, 4)); } setMessageHide(<><p>register_worker response:</p><p className={styles.code}>registered: {JSON.stringify(res.registered)}</p></>); }}>
+                                    <button className={styles.actionBtn} onClick={async () => { setMessage('Registering Worker'); let res; try { res = await fetch('/api/register').then((r) => r.json()); } catch (e) { console.log(e); setMessageHide('register_worker error: ' + JSON.stringify(e, 4)); } setMessageHide(<><p>register_worker response:</p>
+                                    
+                                    <p className={styles.code}>
+                                        {/* registered: {JSON.stringify(res.registered)} */}
+                                        registered: {res && res.registered !== undefined ? JSON.stringify(res.registered) : 'No response or invalid response'}
+
+                                     </p>
+
+                                </>); }}>
                                         Register
                                     </button>
                                     <p className={styles.contractId}>Contract: {process.env.NEXT_PUBLIC_contractId}</p>
